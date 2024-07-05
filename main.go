@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/JulianN96/rss-aggregator/internal/database"
 	"github.com/go-chi/chi"
@@ -39,9 +40,15 @@ func main() {
 	}
 
 	//Assign query system to struct we can reuse.
+	db := database.New(dbConn)
 	apiCfg := apiConfig{
-		DB: database.New(dbConn),
+		DB: db,
 	}
+
+
+	go startScraping(
+		db, 10, time.Minute,
+	)
 
 	router := chi.NewRouter()
 
@@ -72,7 +79,7 @@ func main() {
 	v1Router.Post("/feedfollows", apiCfg.middlewareAuth(apiCfg.handlerCreateFeedFollow))
 	v1Router.Get("/feedfollows", apiCfg.middlewareAuth(apiCfg.handlerGetFeedFollows))
 	v1Router.Delete("/feedfollows/{feedFollowID}", apiCfg.middlewareAuth(apiCfg.handlerDeleteFeedFollow))
-
+	v1Router.Get("/posts", apiCfg.middlewareAuth(apiCfg.handlerGetPostsForUser))
 
 	fmt.Printf("Server Starting and listening on port %v...\n", port)
 	bootErr := server.ListenAndServe()
